@@ -2,9 +2,16 @@ import Foundation
 import HealthKit
 import Combine
 
-class WorkoutManager: ObservableObject {
+protocol WorkoutManagerDelegate: AnyObject {
+    func workoutManager(_ manager: WorkoutManager, didUpdateHeartRate heartRate: Double)
+    func workoutManager(_ manager: WorkoutManager, didUpdateHRV hrv: Double)
+    func workoutManager(_ manager: WorkoutManager, didFailWithError error: Error)
+}
+
+class WorkoutManager: NSObject, ObservableObject {
     static let shared = WorkoutManager()
     private let healthStore = HKHealthStore()
+    weak var delegate: WorkoutManagerDelegate?
     
     @Published var isWorkoutActive = false
     @Published var heartRate: Double = 0
@@ -17,10 +24,20 @@ class WorkoutManager: ObservableObject {
     private var heartRateQuery: HKQuery?
     private var hrvQuery: HKQuery?
     
-    private init() {}
+    private override init() {
+        super.init()
+    }
     
     func startWorkout() async {
         do {
+            // First ensure we have workout authorization
+            let healthKitManager = HealthKitManager.shared
+            let isAuthorized = await healthKitManager.requestWorkoutAuthorization()
+            
+            guard isAuthorized else {
+                throw NSError(domain: "WorkoutManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Workout authorization failed"])
+            }
+            
             // Configure workout session
             let configuration = HKWorkoutConfiguration()
             configuration.activityType = .mindAndBody
@@ -46,7 +63,7 @@ class WorkoutManager: ObservableObject {
             
         } catch {
             errorMessage = "Error starting workout: \(error.localizedDescription)"
-            print(errorMessage ?? "Unknown error")
+            delegate?.workoutManager(self, didFailWithError: error)
         }
     }
     
@@ -69,12 +86,15 @@ class WorkoutManager: ObservableObject {
             
         } catch {
             errorMessage = "Error stopping workout: \(error.localizedDescription)"
-            print(errorMessage ?? "Unknown error")
+            delegate?.workoutManager(self, didFailWithError: error)
         }
     }
     
     private func startHeartRateQuery() {
-        let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+        guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
+            errorMessage = "Heart rate type not available"
+            return
+        }
         
         let query = HKAnchoredObjectQuery(
             type: heartRateType,
@@ -82,6 +102,7 @@ class WorkoutManager: ObservableObject {
             anchor: nil,
             limit: HKObjectQueryNoLimit
         ) { [weak self] query, samples, deletedObjects, anchor, error in
+            guard let self = self else { return }
             guard let samples = samples as? [HKQuantitySample] else { return }
             
             // Get the most recent heart rate
@@ -89,19 +110,22 @@ class WorkoutManager: ObservableObject {
                 let heartRateUnit = HKUnit.count().unitDivided(by: .minute())
                 let heartRate = lastSample.quantity.doubleValue(for: heartRateUnit)
                 DispatchQueue.main.async {
-                    self?.heartRate = heartRate
+                    self.heartRate = heartRate
+                    self.delegate?.workoutManager(self, didUpdateHeartRate: heartRate)
                 }
             }
         }
         
         query.updateHandler = { [weak self] query, samples, deletedObjects, anchor, error in
+            guard let self = self else { return }
             guard let samples = samples as? [HKQuantitySample] else { return }
             
             if let lastSample = samples.last {
                 let heartRateUnit = HKUnit.count().unitDivided(by: .minute())
                 let heartRate = lastSample.quantity.doubleValue(for: heartRateUnit)
                 DispatchQueue.main.async {
-                    self?.heartRate = heartRate
+                    self.heartRate = heartRate
+                    self.delegate?.workoutManager(self, didUpdateHeartRate: heartRate)
                 }
             }
         }
@@ -111,7 +135,10 @@ class WorkoutManager: ObservableObject {
     }
     
     private func startHRVQuery() {
-        let hrvType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!
+        guard let hrvType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else {
+            errorMessage = "HRV type not available"
+            return
+        }
         
         let query = HKAnchoredObjectQuery(
             type: hrvType,
@@ -119,24 +146,28 @@ class WorkoutManager: ObservableObject {
             anchor: nil,
             limit: HKObjectQueryNoLimit
         ) { [weak self] query, samples, deletedObjects, anchor, error in
+            guard let self = self else { return }
             guard let samples = samples as? [HKQuantitySample] else { return }
             
             // Get the most recent HRV
             if let lastSample = samples.last {
                 let hrv = lastSample.quantity.doubleValue(for: .secondUnit())
                 DispatchQueue.main.async {
-                    self?.hrv = hrv
+                    self.hrv = hrv
+                    self.delegate?.workoutManager(self, didUpdateHRV: hrv)
                 }
             }
         }
         
         query.updateHandler = { [weak self] query, samples, deletedObjects, anchor, error in
+            guard let self = self else { return }
             guard let samples = samples as? [HKQuantitySample] else { return }
             
             if let lastSample = samples.last {
                 let hrv = lastSample.quantity.doubleValue(for: .secondUnit())
                 DispatchQueue.main.async {
-                    self?.hrv = hrv
+                    self.hrv = hrv
+                    self.delegate?.workoutManager(self, didUpdateHRV: hrv)
                 }
             }
         }
@@ -171,6 +202,7 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
         DispatchQueue.main.async {
             self.errorMessage = "Workout session failed: \(error.localizedDescription)"
             self.isWorkoutActive = false
+            self.delegate?.workoutManager(self, didFailWithError: error)
         }
     }
 } 

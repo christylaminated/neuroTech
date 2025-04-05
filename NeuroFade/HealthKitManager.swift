@@ -32,7 +32,7 @@ class HealthKitManager: ObservableObject {
             // Check if Apple Watch is configured
             if !isAppleWatchConfigured() {
                 errorMessage = "Please configure your Apple Watch with Apple Health to collect heart rate and HRV data"
-                return
+                return  
             }
             
             isAuthorized = true
@@ -60,6 +60,20 @@ class HealthKitManager: ObservableObject {
         } catch {
             errorMessage = "Failed to check authorization status: \(error.localizedDescription)"
             isAuthorized = false
+        }
+    }
+    
+    func requestWorkoutAuthorization() async -> Bool {
+        do {
+            let typesToShare: Set<HKSampleType> = [
+                HKObjectType.workoutType()
+            ]
+            
+            try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
+            return true
+        } catch {
+            errorMessage = "Failed to authorize workouts: \(error.localizedDescription)"
+            return false
         }
     }
 } 

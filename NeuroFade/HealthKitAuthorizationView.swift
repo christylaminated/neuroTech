@@ -3,6 +3,7 @@ import SwiftUI
 struct HealthKitAuthorizationView: View {
     @StateObject private var healthKitManager = HealthKitManager.shared
     @State private var isRequestingAuthorization = false
+    @State private var showError = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -51,6 +52,13 @@ struct HealthKitAuthorizationView: View {
         .padding()
         .task {
             await healthKitManager.checkAuthorizationStatus()
+        }
+        .alert("Authorization Error", isPresented: $showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            if let error = healthKitManager.errorMessage {
+                Text(error)
+            }
         }
     }
 } 
