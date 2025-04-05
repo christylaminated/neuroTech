@@ -10,5 +10,12 @@
     <array>
         <string>healthkit</string>
     </array>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+        <string>processing</string>
+    </array>
+    <key>NSHealthWorkoutUsageDescription</key>
+    <string>NeuroFade needs permission to track your workout sessions to monitor your heart rate and HRV.</string>
 </dict>
 </plist> 

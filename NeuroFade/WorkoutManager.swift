@@ -10,9 +10,10 @@ class WorkoutManager: ObservableObject {
     @Published var heartRate: Double = 0
     @Published var hrv: Double = 0
     @Published var workoutStartTime: Date?
+    @Published var errorMessage: String?
     
     private var workoutSession: HKWorkoutSession?
-    private var workoutBuilder: HKLiveWorkoutBuilder?
+    private var workoutBuilder: HKWorkoutBuilder?
     private var heartRateQuery: HKQuery?
     private var hrvQuery: HKQuery?
     
@@ -27,9 +28,10 @@ class WorkoutManager: ObservableObject {
             
             // Create and start workout session
             workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
-            workoutBuilder = workoutSession?.associatedWorkoutBuilder()
+            workoutBuilder = HKWorkoutBuilder(healthStore: healthStore, configuration: configuration, device: .local())
             
-            workoutBuilder?.dataSource = HKLiveWorkoutDataSource(healthStore: healthStore, workoutConfiguration: configuration)
+            // Set the workout session delegate
+            workoutSession?.delegate = self
             
             // Start the workout session
             try await workoutSession?.startActivity(with: Date())
@@ -43,7 +45,8 @@ class WorkoutManager: ObservableObject {
             startHRVQuery()
             
         } catch {
-            print("Error starting workout: \(error.localizedDescription)")
+            errorMessage = "Error starting workout: \(error.localizedDescription)"
+            print(errorMessage ?? "Unknown error")
         }
     }
     
@@ -65,7 +68,8 @@ class WorkoutManager: ObservableObject {
             stopQueries()
             
         } catch {
-            print("Error stopping workout: \(error.localizedDescription)")
+            errorMessage = "Error stopping workout: \(error.localizedDescription)"
+            print(errorMessage ?? "Unknown error")
         }
     }
     
@@ -150,5 +154,23 @@ class WorkoutManager: ObservableObject {
         }
         heartRateQuery = nil
         hrvQuery = nil
+    }
+}
+
+// MARK: - HKWorkoutSessionDelegate
+extension WorkoutManager: HKWorkoutSessionDelegate {
+    func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+        // Handle workout session state changes
+        DispatchQueue.main.async {
+            self.isWorkoutActive = toState == .running
+        }
+    }
+    
+    func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        // Handle workout session errors
+        DispatchQueue.main.async {
+            self.errorMessage = "Workout session failed: \(error.localizedDescription)"
+            self.isWorkoutActive = false
+        }
     }
 } 
