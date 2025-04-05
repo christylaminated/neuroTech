@@ -9,11 +9,17 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var authManager = AuthManager()
+    @StateObject private var healthKitManager = HealthKitManager.shared
     
     var body: some View {
         if authManager.isAuthenticated {
-            MainTabView()
-                .environmentObject(authManager)
+            if healthKitManager.isAuthorized {
+                MainTabView()
+                    .environmentObject(authManager)
+            } else {
+                HealthKitAuthorizationView()
+                    .environmentObject(authManager)
+            }
         } else {
             LoginView()
                 .environmentObject(authManager)

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSHealthShareUsageDescription</key>
+    <string>NeuroFade needs access to your heart rate and HRV data to provide personalized insights and recommendations.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>NeuroFade needs permission to read your heart rate and HRV data from your Apple Watch.</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>healthkit</string>
+    </array>
+</dict>
+</plist> 

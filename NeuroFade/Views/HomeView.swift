@@ -16,6 +16,8 @@ struct HomeView: View {
     @State private var timer: Timer?
     @State private var coinTimer: Timer?
     @State private var showingDurationPicker = false
+    @StateObject private var workoutManager = WorkoutManager.shared
+    @State private var isStartingWorkout = false
     
     // Mock data for the last 7 days
     let weekData: [MetricData] = {
@@ -32,122 +34,78 @@ struct HomeView: View {
     }()
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Centered Title
-                Text("YOUR FOCUS")
-                    .font(.largeTitle)
-                    .bold()
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal)
-                
-                // Metrics Chart
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Weekly Metrics")
-                        .font(.headline)
-                        .foregroundColor(.gray)
-                    
-                    Chart {
-                        ForEach(weekData) { data in
-                            LineMark(
-                                x: .value("Date", data.date),
-                                y: .value("EEG", data.eegLevel)
-                            )
-                            .foregroundStyle(.blue)
-                            .interpolationMethod(.catmullRom)
-                            
-                            LineMark(
-                                x: .value("Date", data.date),
-                                y: .value("ECG", data.ecgLevel)
-                            )
-                            .foregroundStyle(.green)
-                            .interpolationMethod(.catmullRom)
-                        }
-                    }
-                    .frame(height: 200)
-                    
-                    HStack {
-                        Circle()
-                            .fill(.blue)
-                            .frame(width: 8, height: 8)
-                        Text("EEG")
-                        Circle()
-                            .fill(.green)
-                            .frame(width: 8, height: 8)
-                        Text("ECG")
-                    }
-                    .font(.caption)
-                }
-                .padding()
-                .background(Color.white)
-                .cornerRadius(15)
-                .shadow(radius: 5)
-                .padding(.horizontal)
-                
-                // Coins Display
-                VStack(spacing: 8) {
-                    HStack {
-                        Image("coin")
-                            .resizable()
-                            .renderingMode(.original)
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 30, height: 30)
-                        Text("\(authManager.neurocoins)")
-                            .font(.title)
-                            .bold()
-                    }
-                    Text("Neurocoins Earned")
-                        .foregroundColor(.gray)
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.white)
-                .cornerRadius(15)
-                .shadow(radius: 5)
-                .padding(.horizontal)
-                
-                // Timer Display and Controls
-                VStack(spacing: 16) {
-                    if isFocusing {
-                        Text(timeString(from: timeRemaining))
-                            .font(.system(size: 50, weight: .bold))
-                            .monospacedDigit()
-                    } else {
-                        Button(action: { showingDurationPicker = true }) {
-                            HStack {
-                                Text(timeString(from: selectedDuration))
-                                    .font(.title2)
-                                Image(systemName: "clock")
-                            }
-                            .foregroundColor(.blue)
-                        }
-                    }
-                    
-                    Button(action: toggleFocus) {
-                        Text(isFocusing ? "End Focus Session" : "Start Focus Session")
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isFocusing ? Color.red : Color.blue)
-                            .cornerRadius(12)
-                    }
-                }
-                .padding()
-                .background(Color.white)
-                .cornerRadius(15)
-                .shadow(radius: 5)
-                .padding(.horizontal)
+        VStack(spacing: 30) {
+            // Heart Rate Display
+            VStack {
+                Text("\(Int(workoutManager.heartRate))")
+                    .font(.system(size: 80, weight: .bold))
+                    .foregroundColor(.red)
+                Text("BPM")
+                    .font(.title2)
+                    .foregroundColor(.gray)
             }
-            .padding(.vertical)
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.systemBackground))
+                    .shadow(radius: 5)
+            )
+            
+            // HRV Display
+            VStack {
+                Text("HRV")
+                    .font(.headline)
+                    .foregroundColor(.gray)
+                Text(String(format: "%.1f ms", workoutManager.hrv * 1000))
+                    .font(.title)
+                    .foregroundColor(.blue)
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 15)
+                    .fill(Color(.systemBackground))
+                    .shadow(radius: 3)
+            )
+            
+            // Workout Controls
+            Button(action: {
+                isStartingWorkout = true
+                Task {
+                    if workoutManager.isWorkoutActive {
+                        await workoutManager.stopWorkout()
+                    } else {
+                        await workoutManager.startWorkout()
+                    }
+                    isStartingWorkout = false
+                }
+            }) {
+                HStack {
+                    Image(systemName: workoutManager.isWorkoutActive ? "stop.fill" : "play.fill")
+                    Text(workoutManager.isWorkoutActive ? "Stop Session" : "Start Session")
+                }
+                .font(.title2)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(workoutManager.isWorkoutActive ? Color.red : Color.green)
+                .cornerRadius(15)
+            }
+            .disabled(isStartingWorkout)
+            
+            if let startTime = workoutManager.workoutStartTime {
+                Text("Session Duration: \(formatDuration(startTime))")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
         }
-        .background(Color.gray.opacity(0.1))
-        .sheet(isPresented: $showingDurationPicker) {
-            DurationPickerView(duration: $selectedDuration, isPresented: $showingDurationPicker)
-        }
-        .onDisappear {
-            stopTimer()
-        }
+        .padding()
+    }
+    
+    private func formatDuration(_ startTime: Date) -> String {
+        let duration = Int(Date().timeIntervalSince(startTime))
+        let minutes = duration / 60
+        let seconds = duration % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
     
     private func toggleFocus() {
