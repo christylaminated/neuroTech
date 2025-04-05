@@ -11,13 +11,12 @@ struct MetricData: Identifiable {
 struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var isFocusing = false
-    @State private var selectedDuration: TimeInterval = 25 * 60 // Default 25 minutes
+    @State private var selectedDuration: TimeInterval = 25 * 60
     @State private var timeRemaining: TimeInterval = 25 * 60
     @State private var timer: Timer?
     @State private var coinTimer: Timer?
     @State private var showingDurationPicker = false
     
-    // Mock data for the last 7 days
     let weekData: [MetricData] = {
         let calendar = Calendar.current
         let today = Date()
@@ -34,18 +33,15 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Centered Title
                 Text("YOUR FOCUS")
-                    .font(.largeTitle)
-                    .bold()
+                    .appText(size: AppStyle.titleSize)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal)
                 
                 // Metrics Chart
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Weekly Metrics")
-                        .font(.headline)
-                        .foregroundColor(.gray)
+                        .appText()
                     
                     Chart {
                         ForEach(weekData) { data in
@@ -53,7 +49,7 @@ struct HomeView: View {
                                 x: .value("Date", data.date),
                                 y: .value("EEG", data.eegLevel)
                             )
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(.white)
                             .interpolationMethod(.catmullRom)
                             
                             LineMark(
@@ -70,18 +66,16 @@ struct HomeView: View {
                         Circle()
                             .fill(.blue)
                             .frame(width: 8, height: 8)
-                        Text("EEG")
+                        Text("EEG").appText()
                         Circle()
                             .fill(.green)
                             .frame(width: 8, height: 8)
-                        Text("ECG")
+                        Text("ECG").appText()
                     }
-                    .font(.caption)
                 }
                 .padding()
-                .background(Color.white)
+                .background(.ultraThinMaterial)
                 .cornerRadius(15)
-                .shadow(radius: 5)
                 .padding(.horizontal)
                 
                 // Coins Display
@@ -93,55 +87,46 @@ struct HomeView: View {
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 30, height: 30)
                         Text("\(authManager.neurocoins)")
-                            .font(.title)
-                            .bold()
+                            .appText(size: AppStyle.titleSize)
                     }
                     Text("Neurocoins Earned")
-                        .foregroundColor(.gray)
+                        .appText()
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.white)
+                .background(.ultraThinMaterial)
                 .cornerRadius(15)
-                .shadow(radius: 5)
                 .padding(.horizontal)
                 
                 // Timer Display and Controls
                 VStack(spacing: 16) {
                     if isFocusing {
                         Text(timeString(from: timeRemaining))
-                            .font(.system(size: 50, weight: .bold))
+                            .appText(size: 50)
                             .monospacedDigit()
                     } else {
                         Button(action: { showingDurationPicker = true }) {
                             HStack {
                                 Text(timeString(from: selectedDuration))
-                                    .font(.title2)
                                 Image(systemName: "clock")
                             }
-                            .foregroundColor(.blue)
                         }
+                        .appButton()
                     }
                     
                     Button(action: toggleFocus) {
                         Text(isFocusing ? "End Focus Session" : "Start Focus Session")
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isFocusing ? Color.red : Color.blue)
-                            .cornerRadius(12)
                     }
+                    .appButton()
                 }
                 .padding()
-                .background(Color.white)
+                .background(.ultraThinMaterial)
                 .cornerRadius(15)
-                .shadow(radius: 5)
                 .padding(.horizontal)
             }
             .padding(.vertical)
         }
-        .background(Color.gray.opacity(0.1))
+        .appBackground(imageName: "home")
         .sheet(isPresented: $showingDurationPicker) {
             DurationPickerView(duration: $selectedDuration, isPresented: $showingDurationPicker)
         }
@@ -181,7 +166,6 @@ struct HomeView: View {
     
     private func startCoinTimer() {
         coinTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
-            // Earn a coin every minute while focusing
             authManager.incrementNeurocoins()
         }
     }
@@ -220,6 +204,7 @@ struct DurationPickerView: View {
                     }) {
                         HStack {
                             Text(duration.label)
+                                .appText()
                             Spacer()
                             if self.duration == duration.minutes * 60 {
                                 Image(systemName: "checkmark")
@@ -229,11 +214,15 @@ struct DurationPickerView: View {
                     }
                 }
             }
+            .listStyle(.plain)
+            .background(.ultraThinMaterial)
             .navigationTitle("Select Duration")
             .navigationBarItems(trailing: Button("Cancel") {
                 isPresented = false
-            })
+            }
+            .appButton())
         }
+        .appBackground(imageName: "home")
     }
 }
 

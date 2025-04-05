@@ -1,80 +1,146 @@
 import SwiftUI
+import PhotosUI
 
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthManager
-    @State private var editingField: String?
+    @State private var isEditingProfile = false
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var username = ""
+    @State private var selectedItem: PhotosPickerItem?
+    @State private var profileImage: Image?
     
     var body: some View {
-        VStack(alignment: .leading) {
-            Text("PROFILE")
-                .font(.largeTitle)
-                .bold()
-            
-            VStack(spacing: 25) {
-                EditableInfoRow(
-                    title: "Username",
-                    value: authManager.currentUser?.username ?? "",
-                    isEditing: editingField == "username",
-                    onEdit: { editingField = "username" },
-                    onSave: { newValue in
-                        authManager.updateUserDetails(username: newValue)
-                        editingField = nil
-                    }
-                )
+        ScrollView {
+            VStack {
+                Text("PROFILE")
+                    .appText(size: AppStyle.titleSize)
+                    .padding(.top)
                 
-                EditableInfoRow(
-                    title: "First Name",
-                    value: authManager.currentUser?.firstName ?? "",
-                    isEditing: editingField == "firstName",
-                    onEdit: { editingField = "firstName" },
-                    onSave: { newValue in
-                        authManager.updateUserDetails(firstName: newValue)
-                        editingField = nil
-                    }
-                )
+                Spacer()
+                    .frame(height: 160)
                 
-                EditableInfoRow(
-                    title: "Last Name",
-                    value: authManager.currentUser?.lastName ?? "",
-                    isEditing: editingField == "lastName",
-                    onEdit: { editingField = "lastName" },
-                    onSave: { newValue in
-                        authManager.updateUserDetails(lastName: newValue)
-                        editingField = nil
+                // Profile Picture and Info Container
+                VStack(spacing: 16) {
+                    // Profile Picture
+                    ZStack {
+                        if let profileImage = profileImage {
+                            profileImage
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 120, height: 120)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .resizable()
+                                .frame(width: 120, height: 120)
+                                .foregroundColor(.white)
+                        }
+                        
+                        // Camera Button
+                        PhotosPicker(selection: $selectedItem,
+                                   matching: .images) {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 35, height: 35)
+                                .overlay(
+                                    Image(systemName: "camera.fill")
+                                        .foregroundColor(.white)
+                                )
+                        }
+                        .position(x: 90, y: 90)
                     }
-                )
-                
-                Button(action: {
-                    authManager.syncWatch()
-                }) {
-                    Text(authManager.currentUser?.watchSynced ?? false ? "Watch Synced" : "Sync Watch")
-                        .fontWeight(.bold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                    .padding(.bottom, 8)
+                    
+                    // User Info (Always Visible)
+                    Group {
+                        if let user = authManager.currentUser {
+                            Text("\(user.firstName) \(user.lastName)")
+                                .appText(size: 24)
+                                .multilineTextAlignment(.center)
+                            
+                            Text("@\(user.username)")
+                                .appText()
+                                .opacity(0.8)
+                        } else {
+                            Text("No user data available")
+                                .appText()
+                                .foregroundColor(.red)
+                        }
+                    }
+                    
+                    // Edit Profile Button or Form
+                    if isEditingProfile {
+                        VStack(spacing: 16) {
+                            TextField("First Name", text: $firstName)
+                                .appText()
+                                .appTextField()
+                            
+                            TextField("Last Name", text: $lastName)
+                                .appText()
+                                .appTextField()
+                            
+                            TextField("Username", text: $username)
+                                .appText()
+                                .appTextField()
+                            
+                            HStack(spacing: 20) {
+                                Button("Cancel") {
+                                    isEditingProfile = false
+                                }
+                                .appButton()
+                                
+                                Button("Save") {
+                                    authManager.updateUserDetails(firstName: firstName, lastName: lastName, username: username)
+                                    isEditingProfile = false
+                                }
+                                .appButton()
+                            }
+                        }
+                    } else {
+                        Button("Edit Profile") {
+                            firstName = authManager.currentUser?.firstName ?? ""
+                            lastName = authManager.currentUser?.lastName ?? ""
+                            username = authManager.currentUser?.username ?? ""
+                            isEditingProfile = true
+                        }
+                        .appButton()
+                    }
                 }
-                .disabled(authManager.currentUser?.watchSynced ?? false)
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(15)
+                .padding(.horizontal)
                 
-                Button(action: {
+                Spacer()
+                    .frame(height: 30)
+                
+                Button("Sync with Apple Watch") {
+                    authManager.syncWatch()
+                }
+                .appButton()
+                
+                Spacer()
+                
+                Button("Log Out") {
                     authManager.logout()
-                }) {
-                    Text("Logout")
-                        .fontWeight(.bold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                }
+                .appButton()
+                .padding(.bottom)
+            }
+            .frame(maxHeight: UIScreen.main.bounds.height - 100)
+        }
+        .onChange(of: selectedItem) { _ in
+            Task {
+                if let data = try? await selectedItem?.loadTransferable(type: Data.self) {
+                    if let uiImage = UIImage(data: data) {
+                        profileImage = Image(uiImage: uiImage)
+                    }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 40)
-            
-            Spacer()
         }
-        .padding()
+        .appBackground(imageName: "home")
     }
 }
 
@@ -123,4 +189,9 @@ struct EditableInfoRow: View {
             }
         }
     }
+}
+
+#Preview {
+    ProfileView()
+        .environmentObject(AuthManager())
 }

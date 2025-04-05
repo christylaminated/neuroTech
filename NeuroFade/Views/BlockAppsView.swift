@@ -18,69 +18,81 @@ struct App: Identifiable {
 }
 
 struct BlockAppsView: View {
-    @State private var apps: [App] = [
-        App(name: "Instagram", icon: "camera.fill", isBlocked: true),
-        App(name: "Twitter", icon: "bird.fill", isBlocked: false),
-        App(name: "TikTok", icon: "play.circle.fill", isBlocked: true),
-        App(name: "Facebook", icon: "person.2.fill", isBlocked: false),
-        App(name: "YouTube", icon: "play.rectangle.fill", isBlocked: true)
+    @State private var selectedApps: Set<String> = []
+    let availableApps = [
+        "Instagram",
+        "TikTok",
+        "X",
+        "YouTube",
+        "Snapchat",
+        "Messages",
+        "Mail"
     ]
     
     var body: some View {
-        NavigationView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("BLOCKED APPS")
-                    .font(.largeTitle)
-                    .bold()
+        ScrollView {
+            VStack(spacing: 24) {
+                Text("BLOCK APPS")
+                    .appText(size: AppStyle.titleSize)
+                    .padding(.top)
                 
-                Text("Toggle apps you want to block during focus time")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                
-                List {
-                    ForEach($apps) { $app in
-                        HStack {
-                            Image(systemName: app.icon)
-                                .foregroundColor(app.isBlocked ? .red : .gray)
-                                .font(.title2)
-                            
-                            Text(app.name)
-                                .font(.headline)
-                            
-                            Spacer()
-                            
-                            Toggle("", isOn: $app.isBlocked)
-                                .tint(.red)
-                        }
-                        .padding(.vertical, 8)
-                    }
+                // Description Card
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Select apps to block during focus time:")
+                        .appText()
                 }
-                .listStyle(PlainListStyle())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(15)
+                .padding(.horizontal)
                 
-                VStack(spacing: 16) {
-                    Button(action: {
-                        // Debug: Print blocked apps
-                        let blockedApps = apps.filter { $0.isBlocked }.map { $0.name }
-                        print("Blocked Apps:", blockedApps)
-                    }) {
-                        Text("Save Changes")
-                            .fontWeight(.bold)
-                            .frame(maxWidth: .infinity)
+                // Apps List
+                VStack(spacing: 12) {
+                    ForEach(availableApps, id: \.self) { app in
+                        Button(action: {
+                            if selectedApps.contains(app) {
+                                selectedApps.remove(app)
+                            } else {
+                                selectedApps.insert(app)
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "app.fill")
+                                    .foregroundColor(.white)
+                                    .frame(width: 24, height: 24)
+                                
+                                Text(app)
+                                    .appText()
+                                
+                                Spacer()
+                                
+                                Image(systemName: selectedApps.contains(app) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 20))
+                            }
                             .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
+                            .background(selectedApps.contains(app) ? .regularMaterial : .ultraThinMaterial)
+                            .if(selectedApps.contains(app)) { view in
+                                view.overlay(Color.purple.opacity(0.3))
+                            }
+                            .cornerRadius(10)
+                        }
                     }
-                    
-                    Text("Debug: \(apps.filter { $0.isBlocked }.count) apps blocked")
-                        .font(.caption)
-                        .foregroundColor(.gray)
                 }
                 .padding(.horizontal)
+                
+                // Save Button
+                Button("Save Changes") {
+                    // Handle saving blocked apps
+                }
+                .appButton()
+                .padding(.horizontal)
+                .padding(.top, 12)
             }
-            .padding()
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.bottom, 20)
         }
+        .appBackground(imageName: "home")
     }
 }
 

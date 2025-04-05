@@ -3,104 +3,100 @@ import SwiftUI
 struct LeaderboardView: View {
     @EnvironmentObject var authManager: AuthManager
     
-    var body: some View {
-        ScrollView(.vertical, showsIndicators: true) {
-            VStack(spacing: 20) {
-                Text("Who's on top?")
-                    .font(.largeTitle)
-                    .foregroundColor(.primary)
-                    .padding(.top, 20)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, -10)
-                
-                Text("Gain coins by staying in focus mode!")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, -120)
-                
-                // User's stats card
-                VStack(spacing: 4) {
-                    Image("coin")
-                        .resizable()
-                        .renderingMode(.original)
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 40, height: 40)
-                    
-                    Text("\(authManager.neurocoins)")
-                        .font(.system(size: 40, weight: .bold))
-                        .foregroundColor(.primary)
-                    
-                    Text("Rank #\(getCurrentRank())")
-                        .font(.subheadline)
-                        .foregroundColor(.blue)
-                }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color.white)
-                        .shadow(radius: 5)
-                )
-                .padding(.horizontal)
-                .padding(.top)
-                
-                // Leaderboard list
-                VStack(spacing: 0) {
-                    ForEach(authManager.getLeaderboard()) { entry in
-                        LeaderboardRow(entry: entry)
-                            .padding(.horizontal)
-                            .padding(.vertical, 12)
-                        
-                        if entry.rank < authManager.getLeaderboard().count {
-                            Divider()
-                                .padding(.horizontal)
-                        }
-                    }
-                }
-                .background(Color.white)
-                .cornerRadius(15)
-                .shadow(radius: 5)
-                .padding(.horizontal)
-                .padding(.bottom)
-            }
-        }
-        .background(Color.gray.opacity(0.1))
-        .edgesIgnoringSafeArea(.bottom)
+    private func getCurrentUserRank() -> Int {
+        return authManager.getLeaderboard().first { entry in
+            entry.username == authManager.currentUser?.username
+        }?.rank ?? 0
     }
     
-    private func getCurrentRank() -> Int {
-        return authManager.getLeaderboard().first(where: { $0.isCurrentUser })?.rank ?? 0
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Text("LEADERBOARD")
+                    .appText(size: AppStyle.titleSize)
+                    .padding(.top)
+                
+                // User Stats Card
+                VStack(spacing: 16) {
+                    // Coin Icon
+                    Image("coin")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 60, height: 60)
+                    
+                    // Coin Count
+                    Text("\(authManager.neurocoins)")
+                        .appText(size: 32)
+                        .bold()
+                    
+                    // Rank
+                    VStack(spacing: 4) {
+                        Text("YOUR RANK")
+                            .appText(size: 16)
+                            .opacity(0.8)
+                        Text("#\(getCurrentUserRank())")
+                            .appText(size: 28)
+                            .bold()
+                    }
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(15)
+                .padding(.horizontal)
+                
+                // Leaderboard List
+                VStack(spacing: 12) {
+                    ForEach(authManager.getLeaderboard(), id: \.rank) { entry in
+                        LeaderboardRowView(entry: entry, isCurrentUser: entry.username == authManager.currentUser?.username)
+                    }
+                }
+                .padding()
+            }
+            .padding(.bottom, 20)
+        }
+        .appBackground(imageName: "home")
     }
 }
 
-struct LeaderboardRow: View {
+struct LeaderboardRowView: View {
     let entry: LeaderboardEntry
+    let isCurrentUser: Bool
     
     var body: some View {
-        HStack(spacing: 15) {
+        HStack {
             Text("#\(entry.rank)")
-                .font(.headline)
-                .foregroundColor(.gray)
-                .frame(width: 40, alignment: .leading)
+                .appText(size: 20)
+                .frame(width: 50)
             
             Text(entry.username)
-                .font(.body)
-                .foregroundColor(entry.isCurrentUser ? .blue : .primary)
-                .fontWeight(entry.isCurrentUser ? .bold : .regular)
+                .appText()
             
             Spacer()
             
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 Image("coin")
                     .resizable()
-                    .renderingMode(.original)
-                    .aspectRatio(contentMode: .fit)
                     .frame(width: 20, height: 20)
                 Text("\(entry.neurocoins)")
-                    .font(.headline)
+                    .appText()
             }
         }
-        .contentShape(Rectangle()) // Makes the entire row tappable
+        .padding()
+        .background(isCurrentUser ? .regularMaterial : .ultraThinMaterial)
+        .if(isCurrentUser) { view in
+            view.overlay(Color.purple.opacity(0.3))
+        }
+        .cornerRadius(10)
+    }
+}
+
+extension View {
+    @ViewBuilder func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
     }
 }
 

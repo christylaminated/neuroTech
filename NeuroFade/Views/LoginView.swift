@@ -1,62 +1,52 @@
 import SwiftUI
 
 struct LoginView: View {
+    @EnvironmentObject var authManager: AuthManager
     @State private var username = ""
     @State private var password = ""
     @State private var showingSignUp = false
-    @EnvironmentObject var authManager: AuthManager
     
     var body: some View {
-        NavigationView {
+        VStack(spacing: 32) {
+            Text("NEUROFADE")
+                .appText(size: AppStyle.titleSize)
+                .padding(.top, 50)
+            
             VStack(spacing: 20) {
-                Text("NEUROFLOW")
-                    .font(.largeTitle)
-                    .bold()
+                TextField("Username", text: $username)
+                    .appText()
+                    .appTextField()
                 
-                VStack(spacing: 25) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Username")
-                            .font(.headline)
-                        TextField("", text: $username)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Password")
-                            .font(.headline)
-                        SecureField("", text: $password)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    }
-                    
-                    Button(action: {
-                        authManager.login(username: username, password: password)
-                    }) {
-                        Text("Login")
-                            .fontWeight(.bold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    
-                    Button("Create Account") {
-                        showingSignUp = true
-                    }
+                SecureField("Password", text: $password)
+                    .appText()
+                    .appTextField()
+                
+                Button("Login") {
+                    authManager.login(username: username, password: password)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 40)
+                .appButton()
                 
-                Spacer()
+                Button("Create Account") {
+                    showingSignUp = true
+                }
+                .appButton()
             }
             .padding()
-            .sheet(isPresented: $showingSignUp) {
-                SignUpView()
-            }
+            .background(.ultraThinMaterial)
+            .cornerRadius(15)
+            .padding(.horizontal)
+            
+            Spacer()
+        }
+        .padding()
+        .appBackground(imageName: "login")
+        .sheet(isPresented: $showingSignUp) {
+            SignUpView()
         }
     }
+}
+
+#Preview {
+    LoginView()
+        .environmentObject(AuthManager())
 }

@@ -1,55 +1,52 @@
 import SwiftUI
 
 struct SignUpView: View {
-    @Environment(\.dismiss) var dismiss
     @EnvironmentObject var authManager: AuthManager
+    @Environment(\.dismiss) var dismiss
     
-    @State private var username = ""
-    @State private var password = ""
     @State private var firstName = ""
     @State private var lastName = ""
+    @State private var username = ""
+    @State private var password = ""
     
     var body: some View {
-        NavigationView {
-            VStack(alignment: .leading) {
-                Text("CREATE ACCOUNT")
-                    .font(.largeTitle)
-                    .bold()
+        VStack(spacing: 32) {
+            Text("CREATE ACCOUNT")
+                .appText(size: AppStyle.titleSize)
+                .padding(.top, 50)
+            
+            VStack(spacing: 20) {
+                TextField("First Name", text: $firstName)
+                    .appText()
+                    .appTextField()
                 
-                VStack(spacing: 25) {
-                    InputField(title: "Username", text: $username)
-                    InputField(title: "Password", text: $password, isSecure: true)
-                    InputField(title: "First Name", text: $firstName)
-                    InputField(title: "Last Name", text: $lastName)
-                    
-                    Button(action: {
-                        authManager.signUp(
-                            username: username,
-                            password: password,
-                            firstName: firstName,
-                            lastName: lastName
-                        )
-                        dismiss()
-                    }) {
-                        Text("Sign Up")
-                            .fontWeight(.bold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
+                TextField("Last Name", text: $lastName)
+                    .appText()
+                    .appTextField()
+                
+                TextField("Username", text: $username)
+                    .appText()
+                    .appTextField()
+                
+                SecureField("Password", text: $password)
+                    .appText()
+                    .appTextField()
+                
+                Button("Sign Up") {
+                    authManager.signUp(username: username, password: password, firstName: firstName, lastName: lastName)
+                    dismiss()
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 40)
-                
-                Spacer()
+                .appButton()
             }
             .padding()
-            .navigationBarItems(trailing: Button("Cancel") { 
-                dismiss()
-            })
+            .background(.ultraThinMaterial)
+            .cornerRadius(15)
+            .padding(.horizontal)
+            
+            Spacer()
         }
+        .padding()
+        .appBackground(imageName: "login")
     }
 }
 
@@ -76,4 +73,9 @@ struct InputField: View {
             }
         }
     }
+}
+
+#Preview {
+    SignUpView()
+        .environmentObject(AuthManager())
 }
