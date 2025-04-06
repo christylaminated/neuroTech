@@ -1,0 +1,100 @@
+'''
+
+pip install fastapi uvicorn muselsl pylsl numpy scipy
+- fastapi: build your web app api -> serve eeg data to the app
+- uvicorn: run your api server -> make your api live and callable
+- muselsl: connect to muse -> stream eeg data from the muse
+- pylsl: read the eeg stream -> capture eeg data in your python code
+- numpy: word with eeg data -> store and process egg numeric data
+- scipy: process eeg signals -> extract brainwave features
+
+when swift uses my api "GET /eeg-latest", web app api will send back 
+{
+    "theta": 2.1,
+    "alpha": 1.4,
+    "beta": 0.8,
+    "theta_alpha_ratio": 1.5,
+    "timestamp": "2025-04-05T10:12:00"
+}
+
+make api live and callable so swift can call my eeg data anytime (its a data service that the swift app can talk to over the internet or locally)
+- "endpoints" (like /eeg-latest) for ios app to get fresh eeg data anything
+
+muse headband sends real time signals from your brain over bluetooth, example:
+Channel 1: 420.2, 321.0, 419.8, ...
+Channel 2: 415.0, 416.3, 415.8, ...
+Channel 3: 412.5, 413.0, 412.8, ...
+Channel 4: 418.0, 419.2, 418.9, ...
+- each channel picks up a differnet spot/wave (Hz) from your head
+- reading the eeg stream: python code connects to these real time signals, processes these numbers to understand brain activity
+
+
+
+EEG Data explaination (muse measures brain electrical activity at the surfacr of your scalp)
+    - electroencephalogram, brain cells (neurons) communicate via electric signals which generate tiny voltage changes which can be detected by muse
+    - eeg unit = microvolts (one millionth of a volt), you are measuring electrical potential (voltage)
+        - your brains electrical signals are very weak
+        - typical eeg signals are in the range of 5 to 100 microvolts
+        - example: 420.1 microvolts -> the voltage difference between your brain and reference electrode is about 420 microvolts
+            - reference electrode: a neutral point on your head that serves as a baseline for comparison
+            - fpz position (roughly the middle of your forehead just above your eyebrows) for muse headsets if the reference electrode
+    - stream of voltage readings (typicall in microvolts)
+    - sampling rate: ~256 times per second (256 Hz) (how many times per second you record a signal)
+        - if your sampling rate is too low, you miss fast brain changes
+        - if your sampling rate is too high,you just get noise
+
+
+Muse is designed for tracking meditation, calmness, and attention states
+[Reference electrode (Fpz)] -> measures baseline (noise + background brain sign)
+
+[Active electrode (TP9)] -> measures active brain region
+
+EEG reading = TP9 - Fpz = (active brain signal + noise) - (Noise) = Isolated brain activity
+1. neurons inside your brain fire, which release electric signal
+2. eeg electrodes (TP9, AF7, AF8, TP10) detect this field
+3. Reference electrode (Fpz) also detectsthe electrical field
+4. Muse (or EEG system) calculates: Voltage difference between Active electrode and reference electrode which we use to classify into the 4 major brainwaves
+
+Major brainwave bands: Theta, Alpha, Beta, Gamma
+- the electrical signals that your brain produces happen at different speeds or frequencies (different mental states)
+    - frequency = how many times a wave oscillates in 1 second
+    - unit = hertz (Hz)
+    - example: 5 Hz = 5 cycles (waves) per second
+    - eeg measures these frequencies in your brain
+- microvolts is the raw data but how quickly these microvolt readings go up or down is their frequency
+- Compute the frequency with these microvolts:
+    - microvolts from muse is coming at 256 samples per second per channel(so signal over time)
+    - determine how fast or slow the microvolts is moving up and down
+- example: raw microvolt data (256 samples/sec): 420.1 → 421.2 → 420.3 → 419.1 → 418.0 → 419.0 → 420.0 → 421.0 ..
+    - "how fast is it oscillating in these 256 samples?"
+    - most of the energy is around 20Hz -> Beta waves
+    - most of the energy is around 6 Hz -> Theta waves
+
+Microvolts = "Height of the wave."
+Sampling rate (256 Hz) = "How fast you're recording microvolt data."
+Frequency (Hz) = "How quickly the wave is going up and down in the recorded data."
+Processing goal = Use the sampling rate + microvolt changes to compute how much power is in Theta, Alpha, Beta bands!
+
+Delta: 0.5-4Hz -> Deep sleep, unconscious (irrelevant)
+- cortex and thalamus are disconnected from external input
+- hippocampus offline for new memory intake
+- hippocampus is sending neural patterns to neocortex
+Theta: 4-8 Hz -> Drowsy, deep relaxation, creativity -> calm state
+- hippocampus starts opening up for internal reflection and light memory formation
+Alpha: 8-12 Hz -> Calm, resting but alert -> calm focus
+- thalamus (all your sences passes through thalamus before it reaches conscious brain) fampens excessive incoming distactions
+- gently filtering out "background noise"
+- hippocampus is ready to absorb info
+Beta: 12-30 Hz -> Alert, active thinking, focus -> high engagement
+- best for active learning and applying knowledge (fast flow between prefrontal cortex, thalamus, and hippocampus)
+- high engagement of hioppocampus and coretx loops, thalamus works with the prefrontal cortex to maintain task goals
+- thalmus actively blocking irrelevant input
+- prefrontal cortex maintains task goals
+Gamma: 30-100 Hz -> High level cognition, memory processing (muse device not sensitive to this)
+- hippocampus hypter engaged
+- highest levels of acetylcholine (attention)
+
+everything starts at low levels at delta and theta, then increases at alpha and beta then peaks at gamma and crashes then you go back to your alpha levels because its sustainable and the cycle repeats
+
+- slow rhythms (theta, alpha) = large networks of neurons firing together slowly
+- fast rhythms (beta, gamma) = smaller groups of neurons firing quickly, passing info rapifly
