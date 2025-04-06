@@ -19,6 +19,9 @@ struct App: Identifiable {
 
 struct BlockAppsView: View {
     @State private var selectedApps: Set<String> = []
+    @State private var showingSaveAlert = false
+    @State private var saveSuccess = false
+    
     let availableApps = [
         "Instagram",
         "TikTok",
@@ -84,7 +87,7 @@ struct BlockAppsView: View {
                 
                 // Save Button
                 Button("Save Changes") {
-                    // Handle saving blocked apps
+                    saveBlockedApps()
                 }
                 .appButton()
                 .padding(.horizontal)
@@ -93,6 +96,18 @@ struct BlockAppsView: View {
             .padding(.bottom, 20)
         }
         .appBackground(imageName: "home")
+        .alert("Success", isPresented: $showingSaveAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(saveSuccess ? "Apps saved successfully!" : "Failed to save apps. Please try again.")
+        }
+    }
+    
+    private func saveBlockedApps() {
+        // Save the selected apps to UserDefaults
+        UserDefaults.standard.set(Array(selectedApps), forKey: "blockedApps")
+        saveSuccess = true
+        showingSaveAlert = true
     }
 }
 

@@ -10,12 +10,14 @@ struct MetricData: Identifiable {
 
 struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
+    @StateObject private var screenTimeManager = ScreenTimeManager.shared
     @State private var isFocusing = false
     @State private var selectedDuration: TimeInterval = 25 * 60
     @State private var timeRemaining: TimeInterval = 25 * 60
     @State private var timer: Timer?
     @State private var coinTimer: Timer?
     @State private var showingDurationPicker = false
+    @State private var showingAuthorizationAlert = false
     
     let weekData: [MetricData] = {
         let calendar = Calendar.current
@@ -118,6 +120,7 @@ struct HomeView: View {
                         Text(isFocusing ? "End Focus Session" : "Start Focus Session")
                     }
                     .appButton()
+                    .disabled(!screenTimeManager.isAuthorized)
                 }
                 .padding()
                 .background(.ultraThinMaterial)
@@ -130,6 +133,28 @@ struct HomeView: View {
         .sheet(isPresented: $showingDurationPicker) {
             DurationPickerView(duration: $selectedDuration, isPresented: $showingDurationPicker)
         }
+        .alert("Screen Time Authorization Required", isPresented: $showingAuthorizationAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Authorize") {
+                screenTimeManager.requestAuthorization()
+            }
+        } message: {
+            Text("NeuroFade needs Screen Time authorization to block apps during focus sessions.")
+        }
+        .alert("Error", isPresented: .constant(screenTimeManager.errorMessage != nil)) {
+            Button("OK", role: .cancel) {
+                screenTimeManager.errorMessage = nil
+            }
+        } message: {
+            if let error = screenTimeManager.errorMessage {
+                Text(error)
+            }
+        }
+        .onAppear {
+            if !screenTimeManager.isAuthorized {
+                showingAuthorizationAlert = true
+            }
+        }
         .onDisappear {
             stopTimer()
         }
@@ -141,9 +166,11 @@ struct HomeView: View {
             timeRemaining = selectedDuration
             startTimer()
             startCoinTimer()
+            startAppRestrictions()
         } else {
             stopTimer()
             stopCoinTimer()
+            stopAppRestrictions()
         }
     }
     
@@ -154,6 +181,7 @@ struct HomeView: View {
             } else {
                 stopTimer()
                 isFocusing = false
+                stopAppRestrictions()
             }
         }
     }
@@ -173,6 +201,16 @@ struct HomeView: View {
     private func stopCoinTimer() {
         coinTimer?.invalidate()
         coinTimer = nil
+    }
+    
+    private func startAppRestrictions() {
+        if let blockedApps = UserDefaults.standard.array(forKey: "blockedApps") as? [String] {
+            screenTimeManager.blockApps(Set(blockedApps), duration: selectedDuration)
+        }
+    }
+    
+    private func stopAppRestrictions() {
+        screenTimeManager.removeRestrictions()
     }
     
     private func timeString(from seconds: TimeInterval) -> String {
